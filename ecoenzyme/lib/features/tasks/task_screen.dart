@@ -109,6 +109,8 @@ class _TaskScreenState extends State<TaskScreen> {
     final cropController = TextEditingController();
     final soilController = TextEditingController();
     final locationController = TextEditingController();
+    final seasonController = TextEditingController();
+    final experienceController = TextEditingController();
     var error = '';
 
     try {
@@ -125,6 +127,7 @@ class _TaskScreenState extends State<TaskScreen> {
                     controller: cropController,
                     autofocus: true,
                     textCapitalization: TextCapitalization.sentences,
+                    maxLength: 100,
                     decoration: InputDecoration(
                       labelText: 'Crop type *',
                       hintText: 'e.g. Tomato',
@@ -135,13 +138,41 @@ class _TaskScreenState extends State<TaskScreen> {
                   TextField(
                     controller: soilController,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(labelText: 'Soil type'),
+                    maxLength: 100,
+                    decoration: const InputDecoration(
+                      labelText: 'Soil type *',
+                      hintText: "e.g. loamy, or 'not sure'",
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: locationController,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(labelText: 'Location'),
+                    maxLength: 100,
+                    decoration: const InputDecoration(
+                      labelText: 'Region or country *',
+                      hintText: 'No exact address needed',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: seasonController,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLength: 100,
+                    decoration: const InputDecoration(
+                      labelText: 'Growing season *',
+                      hintText: 'e.g. monsoon, spring',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: experienceController,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLength: 100,
+                    decoration: const InputDecoration(
+                      labelText: 'Farming experience *',
+                      hintText: 'e.g. beginner, 5 years',
+                    ),
                   ),
                 ],
               ),
@@ -154,18 +185,28 @@ class _TaskScreenState extends State<TaskScreen> {
               FilledButton(
                 onPressed: () {
                   final cropType = cropController.text.trim();
-                  if (cropType.isEmpty) {
-                    setDialogState(() => error = 'Enter a crop type.');
+                  final soilType = soilController.text.trim();
+                  final location = locationController.text.trim();
+                  final season = seasonController.text.trim();
+                  final farmerExperience = experienceController.text.trim();
+                  if (cropType.isEmpty ||
+                      soilType.isEmpty ||
+                      location.isEmpty ||
+                      season.isEmpty ||
+                      farmerExperience.isEmpty) {
+                    setDialogState(
+                      () => error = 'Complete all required fields.',
+                    );
                     return;
                   }
                   Navigator.pop(
                     context,
                     _TaskGenerationInput(
                       cropType: cropType,
-                      soilType: soilController.text.trim(),
-                      location: locationController.text.trim(),
-                      season: _currentSeason(),
-                      farmerExperience: 'beginner',
+                      soilType: soilType,
+                      location: location,
+                      season: season,
+                      farmerExperience: farmerExperience,
                     ),
                   );
                 },
@@ -179,15 +220,9 @@ class _TaskScreenState extends State<TaskScreen> {
       cropController.dispose();
       soilController.dispose();
       locationController.dispose();
+      seasonController.dispose();
+      experienceController.dispose();
     }
-  }
-
-  String _currentSeason() {
-    final month = DateTime.now().month;
-    if (month >= 3 && month <= 5) return 'spring';
-    if (month >= 6 && month <= 8) return 'summer';
-    if (month >= 9 && month <= 11) return 'autumn';
-    return 'winter';
   }
 
   String _readableError(Object error) => error.toString().replaceFirst(

@@ -31,6 +31,30 @@ class _EcoaiState extends State<Ecoai> {
     super.initState();
     widget.pendingCrop.addListener(_consumePendingCrop);
     _consumePendingCrop();
+    _loadChatHistory();
+  }
+
+  Future<void> _loadChatHistory() async {
+    try {
+      final history = await _service.getChatHistory();
+      if (!mounted || _messages.isNotEmpty) return;
+      setState(() {
+        for (final exchange in history) {
+          _messages
+            ..add(_ChatMessage(exchange.prompt, isUser: true))
+            ..add(_ChatMessage(exchange.reply, isUser: false));
+        }
+      });
+      _scrollToBottom();
+    } catch (error) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(_readableError(error))));
+      });
+    }
   }
 
   @override

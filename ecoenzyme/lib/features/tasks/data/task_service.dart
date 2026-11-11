@@ -75,21 +75,20 @@ class TaskService {
 
   Future<List<EcoTask>> generateTasks({
     required String cropType,
-    String? soilType,
-    String? location,
-    String? season,
-    String? farmerExperience,
+    required String soilType,
+    required String location,
+    required String season,
+    required String farmerExperience,
   }) async {
     final response = await _apiClient.request(
       '/api/tasks/generate',
       method: 'POST',
       body: {
         'cropType': cropType,
-        if (soilType != null && soilType.isNotEmpty) 'soilType': soilType,
-        if (location != null && location.isNotEmpty) 'location': location,
-        if (season != null && season.isNotEmpty) 'season': season,
-        if (farmerExperience != null && farmerExperience.isNotEmpty)
-          'farmerExperience': farmerExperience,
+        'soilType': soilType,
+        'location': location,
+        'season': season,
+        'farmerExperience': farmerExperience,
       },
     );
     final tasks = response['tasks'];

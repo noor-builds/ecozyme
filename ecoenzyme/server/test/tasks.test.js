@@ -13,16 +13,17 @@ let tasks = [
     is_completed: false,
   },
 ];
+let cropProfiles = [];
 let server;
 let baseUrl;
 
 function fakeSupabase() {
   return {
     from(table) {
-      assert.equal(table, "tasks");
       const filters = {};
       let updates;
       let insertRows;
+      let upsertRow;
       const query = {
         select() {
           return query;
@@ -52,7 +53,26 @@ function fakeSupabase() {
           insertRows = rows;
           return query;
         },
+        upsert(row, options) {
+          assert.equal(table, "farmer_crops");
+          assert.equal(options.onConflict, "farmer_id,crop_type,location");
+          upsertRow = row;
+          return query;
+        },
         then(resolve, reject) {
+          if (table === "farmer_crops") {
+            const existing = cropProfiles.find(
+              (item) =>
+                item.farmer_id === upsertRow.farmer_id &&
+                item.crop_type === upsertRow.crop_type &&
+                item.location === upsertRow.location,
+            );
+            if (existing) Object.assign(existing, upsertRow);
+            else cropProfiles.push(upsertRow);
+            return Promise.resolve({ data: null, error: null }).then(resolve, reject);
+          }
+
+          assert.equal(table, "tasks");
           const created = insertRows.map((row, index) => ({
             ...row,
             id: index + 10,
@@ -84,6 +104,7 @@ before(async () => {
       is_completed: false,
     },
   ];
+  cropProfiles = [];
   const app = express();
   app.use(express.json());
   app.use(
@@ -128,6 +149,10 @@ test("persists generated tasks under the authenticated user", async () => {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       cropType: "tomato",
+      soilType: "loamy",
+      location: "Pune, India",
+      season: "monsoon",
+      farmerExperience: "beginner",
       farmer_id: "attacker-controlled-id",
     }),
   });
@@ -135,6 +160,26 @@ test("persists generated tasks under the authenticated user", async () => {
   const body = await response.json();
   assert.equal(body.tasks[0].farmer_id, user.id);
   assert.deepEqual(body.tasks[0].benefits, ["Early issue detection"]);
+  assert.deepEqual(cropProfiles[0], {
+    farmer_id: user.id,
+    crop_type: "tomato",
+    soil_type: "loamy",
+    location: "Pune, India",
+    season: "monsoon",
+    farmer_experience: "beginner",
+    updated_at: cropProfiles[0].updated_at,
+  });
+  assert.equal(body.tasks[0].meta.farmerExperience, "beginner");
+});
+
+test("requires all crop details before generating tasks", async () => {
+  const response = await fetch(`${baseUrl}/generate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ cropType: "tomato" }),
+  });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /soilType is required/i);
 });
 
 test("updates completion state and timestamp", async () => {

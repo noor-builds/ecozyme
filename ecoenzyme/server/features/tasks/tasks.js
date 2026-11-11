@@ -64,10 +64,13 @@ function validatedGenerationInput(body) {
   const input = {};
   for (const field of fields) {
     const value = body[field];
-    if (value !== undefined && (typeof value !== "string" || value.length > MAX_FILTER_LENGTH)) {
-      return { error: `${field} must be a string no longer than ${MAX_FILTER_LENGTH} characters.` };
+    if (typeof value !== "string" || value.trim().length === 0) {
+      return { error: `${field} is required.` };
     }
-    input[field] = typeof value === "string" ? value.trim() : "";
+    if (value.length > MAX_FILTER_LENGTH) {
+      return { error: `${field} must be no longer than ${MAX_FILTER_LENGTH} characters.` };
+    }
+    input[field] = value.trim();
   }
   return { input };
 }
@@ -148,6 +151,26 @@ function createTasksRouter({
 
     try {
       const tasks = await taskGenerator(validation.input);
+      const { error: cropError } = await req.supabase
+        .from("farmer_crops")
+        .upsert(
+          {
+            farmer_id: req.user.id,
+            crop_type: validation.input.cropType,
+            soil_type: validation.input.soilType,
+            location: validation.input.location,
+            season: validation.input.season,
+            farmer_experience: validation.input.farmerExperience,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "farmer_id,crop_type,location" },
+        );
+
+      if (cropError) {
+        console.error("Could not save crop profile:", cropError.message);
+        return res.status(500).json({ error: "Your crop details could not be saved." });
+      }
+
       const rows = tasks.map((task) => ({
         ...task,
         farmer_id: req.user.id,
